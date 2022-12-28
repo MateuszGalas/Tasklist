@@ -2,28 +2,95 @@ package tasklist
 
 import kotlinx.datetime.*
 
-class TaskList() {
+class TaskList {
     private val taskList = mutableListOf<MutableList<String>>()
 
     fun add() {
-        val list = mutableListOf<String>()
         taskList.add(mutableListOf())
         val priority = addTaskPriority()
-        list.add(addDate())
-        list.add(addTime())
-        list.add(priority)
-        taskList[taskList.lastIndex].add(list.joinToString(" "))
+        val date = addDate()
+
+        taskList[taskList.lastIndex].add(date.toString())
+        taskList[taskList.lastIndex].add(addTime())
+        taskList[taskList.lastIndex].add(priority)
+        taskList[taskList.lastIndex].add(countDays(date))
+        addTask(taskList.lastIndex)
+    }
+
+    private fun countDays(date: LocalDate): String {
+        val currentDate = Clock.System.now().toLocalDateTime(TimeZone.of("UTC+0")).date
+
+        return when (currentDate.daysUntil(date)) {
+            0 -> "T"
+            in 1..Int.MAX_VALUE -> "I"
+            else -> "O"
+        }
+    }
+
+    private fun addTask(index: Int) {
         println("Input a new task (enter a blank line to end):")
         while (true) {
             val input = readln().trim()
-            if (input.matches("""\s+""".toRegex()) || input == "" && taskList[taskList.lastIndex].size == 1) {
-                taskList.removeAt(taskList.lastIndex)
+            if (input.matches("""\s+""".toRegex()) || input == "" && taskList[index].size == 4) {
+                taskList.removeAt(index)
                 println("The task is blank")
                 break
             }
             if (input.matches("""\s+""".toRegex()) || input == "") break
-            taskList[taskList.lastIndex].add(input)
+            taskList[index].add(input)
         }
+    }
+
+    fun edit() {
+        if (taskList.isEmpty()) return
+        println("Input the task number (1-${taskList.size}):")
+        try {
+            val index = readln().toInt()
+            if (index !in 1..taskList.size) throw Exception()
+            editField(index)
+        } catch (e: Exception) {
+            println("Invalid task number")
+            return edit()
+        }
+    }
+
+    private fun editField(index: Int) {
+        println("Input a field to edit (priority, date, time, task):")
+        val taskNumber = index - 1
+        when (readln()) {
+            "date" -> {
+                val date = addDate()
+                val days = countDays(date)
+                taskList[taskNumber][0] = date.toString()
+                taskList[taskNumber][3] = days
+            }
+
+            "time" -> taskList[taskNumber][1] = addTime()
+            "priority" -> taskList[taskNumber][2] = addTaskPriority()
+            "task" -> {
+                taskList[taskNumber].subList(4, taskList[taskNumber].size).clear()
+                addTask(taskNumber)
+            }
+
+            else -> {
+                println("Invalid field")
+                return editField(index)
+            }
+        }
+        println("The task is changed")
+    }
+
+    fun delete() {
+        if (taskList.isEmpty()) return
+        println("Input the task number (1-${taskList.size}):")
+        try {
+            val index = readln()
+            taskList.removeAt(index.toInt() - 1)
+        } catch (e: Exception) {
+            println("Invalid task number")
+            return delete()
+        }
+        println("The task is deleted")
     }
 
     private fun addTaskPriority(): String {
@@ -38,7 +105,7 @@ class TaskList() {
         }
     }
 
-    private fun addDate(): String {
+    private fun addDate(): LocalDate {
         println("Input the date (yyyy-mm-dd):")
         val date = readln().split("-")
         val dateTime: LocalDate
@@ -48,7 +115,7 @@ class TaskList() {
             println("The input date is invalid")
             return addDate()
         }
-        return dateTime.toString()
+        return dateTime
     }
 
     private fun addTime(): String {
@@ -74,16 +141,24 @@ class TaskList() {
     }
 
     fun print() {
-        if (taskList.isEmpty()) println("No tasks have been input")
-        else {
-            taskList.forEachIndexed { index, strings ->
-                print(String.format("%-2d ", index + 1))
-                strings.forEach {
-                    if (taskList[index].indexOf(it) == 0) println("%s".format(it))
-                    else println("   %s".format(it))
+        if (taskList.isEmpty()) {
+            println("No tasks have been input")
+            return
+        }
+        taskList.forEachIndexed { index, strings ->
+            var str = ""
+            print(String.format("%-2d ", index + 1))
+            strings.forEach {
+                if (taskList[index].indexOf(it) < 4) {
+                    str += " $it"
+                } else if (taskList[index].indexOf(it) == 4) {
+                    println(str.trim())
+                    println("   %s".format(it))
+                } else {
+                    println("   %s".format(it))
                 }
-                println()
             }
+            println()
         }
     }
 }
@@ -92,18 +167,14 @@ fun main() {
     val taskList = TaskList()
 
     while (true) {
-        println("Input an action (add, print, end):")
-        val input = readln()
-        when (input) {
+        println("Input an action (add, print, edit, delete, end):")
+        when (readln()) {
             "add" -> taskList.add()
             "print" -> taskList.print()
-            "end" -> break
+            "delete" -> taskList.print().also { taskList.delete() }
+            "edit" -> taskList.print().also { taskList.edit() }
+            "end" -> println("Tasklist exiting!").also { return }
             else -> println("The input action is invalid")
         }
     }
-
-    println("Tasklist exiting!")
-
 }
-
-

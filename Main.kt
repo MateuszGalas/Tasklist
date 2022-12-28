@@ -21,9 +21,9 @@ class TaskList {
         val currentDate = Clock.System.now().toLocalDateTime(TimeZone.of("UTC+0")).date
 
         return when (currentDate.daysUntil(date)) {
-            0 -> "T"
-            in 1..Int.MAX_VALUE -> "I"
-            else -> "O"
+            0 -> "\u001B[103m \u001B[0m"
+            in 1..Int.MAX_VALUE -> "\u001B[102m \u001B[0m"
+            else -> "\u001B[101m \u001B[0m"
         }
     }
 
@@ -97,10 +97,10 @@ class TaskList {
         println("Input the task priority (C, H, N, L):")
         val priority = readln()
         return when {
-            priority.equals("c", true) -> "C"
-            priority.equals("h", true) -> "H"
-            priority.equals("n", true) -> "N"
-            priority.equals("l", true) -> "L"
+            priority.equals("c", true) -> "\u001B[101m \u001B[0m"
+            priority.equals("h", true) -> "\u001B[103m \u001B[0m"
+            priority.equals("n", true) -> "\u001B[102m \u001B[0m"
+            priority.equals("l", true) -> "\u001B[104m \u001B[0m"
             else -> addTaskPriority()
         }
     }
@@ -145,21 +145,50 @@ class TaskList {
             println("No tasks have been input")
             return
         }
+        var tasks = ""
+        tasks += "+----+------------+-------+---+---+--------------------------------------------+\n"
+        tasks += String.format("| %-2s |    %-8s| %-6s| %s | %s |%23s%-21s|\n", "N", "Date", "Time", "P", "D", "Task", "")
+
         taskList.forEachIndexed { index, strings ->
+            tasks += "+----+------------+-------+---+---+--------------------------------------------+\n"
             var str = ""
-            print(String.format("%-2d ", index + 1))
+            tasks += String.format("| %-2d |", index + 1)
             strings.forEach {
-                if (taskList[index].indexOf(it) < 4) {
-                    str += " $it"
-                } else if (taskList[index].indexOf(it) == 4) {
-                    println(str.trim())
-                    println("   %s".format(it))
-                } else {
-                    println("   %s".format(it))
+                when (taskList[index].indexOf(it)) {
+                    0 -> tasks += "%11s |".format(it)
+                    1 -> tasks += "%6s |".format(it)
+                    2 -> tasks += " %s |".format(it)
+                    3 -> tasks += " %s |".format(it)
+                    4 -> {
+                        for (i in it.indices) {
+                            if (i % 44 == 0 && i != 0) {
+                                tasks += "%-44s|\n".format(str)
+                                tasks += String.format("|%4s|%12s|%7s|%3s|%3s|", "", "", "", "", "")
+                                str = ""
+                            }
+                            str += it[i]
+                        }
+                        tasks += "%-44s|\n".format(str)
+                        str = ""
+                    }
+                    else -> {
+                        tasks += String.format("|%4s|%12s|%7s|%3s|%3s|", "", "", "", "", "")
+                        for (i in it.indices) {
+                            if (i % 44 == 0 && i != 0) {
+                                tasks += "%-44s|\n".format(str)
+                                tasks += String.format("|%4s|%12s|%7s|%3s|%3s|", "", "", "", "", "")
+                                str = ""
+                            }
+                            str += it[i]
+                        }
+                        tasks += "%-44s|\n".format(str)
+                        str = ""
+                    }
                 }
             }
-            println()
         }
+        tasks += "+----+------------+-------+---+---+--------------------------------------------+\n"
+        println(tasks)
     }
 }
 
@@ -177,4 +206,7 @@ fun main() {
             else -> println("The input action is invalid")
         }
     }
+
+/*    val table = String.format("| %-2s|    %-7s|  %-5s| %s | %s |%23s%-21s|", "N", "Date", "Time", "P", "D", "Task", "")
+    println(table)*/
 }

@@ -1,9 +1,14 @@
 package tasklist
 
+import com.squareup.moshi.JsonAdapter
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.Types
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import kotlinx.datetime.*
+import java.io.File
 
 class TaskList {
-    private val taskList = mutableListOf<MutableList<String>>()
+    val taskList = mutableListOf<MutableList<String>>()
 
     fun add() {
         taskList.add(mutableListOf())
@@ -192,8 +197,38 @@ class TaskList {
     }
 }
 
+data class Task(val date: String, val time: String, val priority: String, val d: String, val task: MutableList<String>)
+
 fun main() {
     val taskList = TaskList()
+    val jsonFile = File("tasklist.json")
+
+    val moshi = Moshi.Builder()
+        .add(KotlinJsonAdapterFactory())
+        .build()
+    val taskAdapter = moshi.adapter(Task::class.java)
+    val type = Types.newParameterizedType(List::class.java, Task::class.java)
+    val tasksAdapter = moshi.adapter<List<Task?>>(type)
+
+    if (jsonFile.exists()) {
+        val json = jsonFile.readLines()
+        for (i in json) {
+            val task = tasksAdapter!!.fromJson(i)
+            for (k in task!!) {
+                taskList.taskList.add(mutableListOf())
+                taskList.taskList[taskList.taskList.lastIndex].add(k?.date.toString())
+                taskList.taskList[taskList.taskList.lastIndex].add(k?.time.toString())
+                taskList.taskList[taskList.taskList.lastIndex].add(k?.priority.toString())
+                taskList.taskList[taskList.taskList.lastIndex].add(k?.d.toString())
+
+                for (j in k!!.task) {
+                    taskList.taskList[taskList.taskList.lastIndex].add(j)
+                }
+            }
+        }
+
+        jsonFile.writeText("")
+    }
 
     while (true) {
         println("Input an action (add, print, edit, delete, end):")
@@ -202,11 +237,37 @@ fun main() {
             "print" -> taskList.print()
             "delete" -> taskList.print().also { taskList.delete() }
             "edit" -> taskList.print().also { taskList.edit() }
-            "end" -> println("Tasklist exiting!").also { return }
+            "end" -> {
+                println("Tasklist exiting!")
+                break
+            }
             else -> println("The input action is invalid")
         }
     }
 
-/*    val table = String.format("| %-2s|    %-7s|  %-5s| %s | %s |%23s%-21s|", "N", "Date", "Time", "P", "D", "Task", "")
-    println(table)*/
+    if (taskList.taskList.isEmpty()) return
+    val list = mutableListOf<String?>()
+    taskList.taskList.forEachIndexed { index, strings ->
+        var counter = 0
+        var date = ""
+        var time = ""
+        var priority = ""
+        var due = ""
+        val task = mutableListOf<String>()
+        strings.forEach {
+            when (counter) {
+                0 -> date = it
+                1 -> time = it
+                2 -> priority = it
+                3 -> due = it
+                else -> task.add(it)
+            }
+            counter++
+        }
+
+        val taskToJson = Task(date, time, priority, due, task)
+        if (!jsonFile.exists()) jsonFile.createNewFile()
+        list.add(taskAdapter.toJson(taskToJson))
+    }
+    jsonFile.appendText(list.toString())
 }
